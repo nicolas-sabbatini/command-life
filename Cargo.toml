@@ -1,0 +1,13 @@
+[package]
+name = "command-life"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+crossbeam = "0.8"
+crossterm = "0.23"
+log = "0.4"
+rand = "0.8"
+simple-logging = "2.0"
+thiserror = "1.0"
