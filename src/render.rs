@@ -7,7 +7,7 @@ use crossterm::{
 };
 use std::io::{Stdout, Write};
 
-use crate::Ctx;
+use crate::engine::Ctx;
 
 pub type Frame = Vec<Vec<&'static str>>;
 pub fn new_frame(ctx: &Ctx) -> Frame {
