@@ -10,6 +10,7 @@ use std::io;
 use crate::engine::main_loop;
 
 mod engine;
+mod life;
 mod render;
 
 fn main() -> Result<()> {

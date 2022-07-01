@@ -1,4 +1,7 @@
-use crate::render::{draw, new_frame, Frame};
+use crate::{
+    life::Life,
+    render::{draw, new_frame, Frame},
+};
 use anyhow::Result;
 use crossbeam::channel::unbounded;
 use crossterm::{
@@ -12,14 +15,14 @@ use std::{
     time::{Duration, Instant},
 };
 
-trait State {
+pub trait State {
     fn input_handle(&mut self, key: KeyCode);
     fn update(&mut self, dt: &Duration);
     fn draw(&self, frame: &mut Frame);
 }
 
 #[derive(Debug)]
-struct StateMachine<S: State>(S);
+pub struct StateMachine<S: State>(pub S);
 
 #[derive(Debug)]
 pub struct Ctx {
@@ -53,6 +56,9 @@ pub fn main_loop() -> Result<()> {
     });
     debug!("Render created");
 
+    // Create start state
+    let mut state_machine = StateMachine::<Life>::new(&mut ctx);
+
     let mut frame_time = Instant::now();
     'main_loop: loop {
         // debug!("Frame, dt: {:#?}", ctx.dt);
@@ -65,7 +71,7 @@ pub fn main_loop() -> Result<()> {
             match event::read()? {
                 Event::Key(key) => match key.code {
                     KeyCode::Esc | KeyCode::Char('q') => break 'main_loop,
-                    _ => (),
+                    k => state_machine.0.input_handle(k),
                 },
                 Event::Resize(x, y) => {
                     debug!("Resize Event: {} {}", x, y);
@@ -76,11 +82,11 @@ pub fn main_loop() -> Result<()> {
                 _ => (),
             }
         }
+
+        state_machine.0.update(&ctx.dt);
         let mut frame = new_frame(&ctx);
-        frame[0][0] = crate::render::Cell {
-            char: '0',
-            ..Default::default()
-        };
+        state_machine.0.draw(&mut frame);
+
         if let Err(err) = render_sender.send((frame, force)) {
             error!("Failed to sed frame to render {:#?}", err);
         };

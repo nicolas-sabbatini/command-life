@@ -18,7 +18,7 @@ pub struct Cell {
 impl Default for Cell {
     fn default() -> Self {
         Cell {
-            foreground_color: Color::White,
+            foreground_color: Color::Black,
             background_color: Color::Blue,
             char: ' ',
         }
