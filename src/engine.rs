@@ -55,7 +55,7 @@ pub fn main_loop() -> Result<()> {
 
     let mut frame_time = Instant::now();
     'main_loop: loop {
-        // debug!("Frame, dt: {:#?}", dt);
+        // debug!("Frame, dt: {:#?}", ctx.dt);
         // Update delta time
         ctx.dt = frame_time.elapsed();
         frame_time = Instant::now();
@@ -77,6 +77,10 @@ pub fn main_loop() -> Result<()> {
             }
         }
         let mut frame = new_frame(&ctx);
+        frame[0][0] = crate::render::Cell {
+            char: '0',
+            ..Default::default()
+        };
         if let Err(err) = render_sender.send((frame, force)) {
             error!("Failed to sed frame to render {:#?}", err);
         };
