@@ -5,7 +5,10 @@ use crossterm::{
     terminal::{Clear, ClearType},
     QueueableCommand,
 };
-use std::io::{Stdout, Write};
+use std::{
+    io::{Stdout, Write},
+    usize,
+};
 
 use crate::engine::Ctx;
 
@@ -28,10 +31,6 @@ impl Default for Cell {
 pub type Frame = Vec<Vec<Cell>>;
 pub fn new_frame(ctx: &Ctx) -> Frame {
     vec![vec![Cell::default(); ctx.rows as usize]; ctx.cols as usize]
-}
-
-pub trait Drawable {
-    fn draw(&self, frame: &mut Frame);
 }
 
 pub fn draw(
@@ -61,4 +60,24 @@ pub fn draw(
     });
     std_out.flush()?;
     Ok(())
+}
+
+pub fn draw_rec(x: usize, y: usize, w: usize, h: usize, clear_cel: Cell, frame: &mut Frame) {
+    for x_index in x..w + x {
+        for y_index in y..y + h {
+            if x_index < frame.len() && y_index < frame[0].len() {
+                frame[x_index][y_index] = clear_cel;
+            }
+        }
+    }
+}
+
+pub fn draw_text(x: usize, y: usize, text: &str, cel: Cell, frame: &mut Frame) {
+    for (x_offset, c) in text.chars().enumerate() {
+        if x + x_offset < frame.len() && y < frame.len() {
+            let mut c_cell = cel;
+            c_cell.char = c;
+            frame[x + x_offset][y] = c_cell;
+        }
+    }
 }

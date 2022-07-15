@@ -1,11 +1,16 @@
-use std::time::Duration;
-
 use crate::{
     engine::{Ctx, State, StateMachine},
-    render::{Cell, Frame},
+    render::{draw_rec, draw_text, Cell, Frame},
 };
 use crossterm::{event::KeyCode, style::Color};
 use rand::Rng;
+use std::time::Duration;
+
+#[derive(PartialEq)]
+enum Status {
+    Pause,
+    Runing,
+}
 
 pub struct Life {
     current_cells: Vec<Vec<bool>>,
@@ -13,21 +18,36 @@ pub struct Life {
     alive_rule: [bool; 9],
     dead_rule: [bool; 9],
     born_rule: [bool; 9],
+    alive_threshold: f32,
     rows: u32,
     cols: u32,
     step_time: Duration,
-    runing: bool,
+    status: Status,
+}
+
+impl Life {
+    fn fill_current(&mut self, ctx: &mut Ctx) {
+        (0..self.current_cells.len()).for_each(|x| {
+            (0..self.current_cells[0].len()).for_each(|y| {
+                if ctx.rng.gen::<f32>() < self.alive_threshold {
+                    self.current_cells[x][y] = true;
+                }
+            });
+        });
+    }
 }
 
 impl State for Life {
     fn input_handle(&mut self, key: KeyCode) {
-        if let KeyCode::Char(' ') = key {
-            self.runing = !self.runing
+        match key {
+            KeyCode::Char(' ') if self.status == Status::Runing => self.status = Status::Pause,
+            KeyCode::Char(' ') if self.status == Status::Pause => self.status = Status::Runing,
+            _ => {}
         }
     }
 
     fn update(&mut self, dt: &Duration) {
-        if !self.runing {
+        if self.status == Status::Pause {
             return;
         }
         match self.step_time.saturating_sub(*dt) {
@@ -86,29 +106,49 @@ impl State for Life {
                 }
             })
         });
+        if self.status == Status::Pause {
+            draw_rec(
+                2,
+                2,
+                7,
+                3,
+                Cell {
+                    foreground_color: Color::White,
+                    background_color: Color::Black,
+                    char: ' ',
+                },
+                frame,
+            );
+            draw_text(
+                3,
+                3,
+                "PAUSE",
+                Cell {
+                    foreground_color: Color::White,
+                    background_color: Color::Black,
+                    char: ' ',
+                },
+                frame,
+            );
+        }
     }
 }
 
 impl StateMachine<Life> {
     pub fn new(ctx: &mut Ctx) -> Self {
-        let mut current_cells = vec![vec![false; ctx.rows as usize]; ctx.cols as usize];
-        for x in 0..ctx.cols as usize {
-            for y in 0..ctx.rows as usize {
-                if ctx.rng.gen::<f32>() < 0.49 {
-                    current_cells[x][y] = true;
-                }
-            }
-        }
-        Self(Life {
-            current_cells,
+        let mut new_life = Self(Life {
+            current_cells: vec![vec![false; ctx.rows as usize]; ctx.cols as usize],
             next_cells: vec![vec![false; ctx.rows as usize]; ctx.cols as usize],
             alive_rule: [false, false, true, true, false, false, false, false, false],
             dead_rule: [true, true, false, false, true, true, true, true, true],
             born_rule: [false, false, false, true, false, false, false, false, false],
+            alive_threshold: 0.50,
             cols: ctx.cols as u32,
             rows: ctx.rows as u32,
             step_time: Duration::from_secs_f32(0.5),
-            runing: true,
-        })
+            status: Status::Pause,
+        });
+        new_life.0.fill_current(ctx);
+        new_life
     }
 }
