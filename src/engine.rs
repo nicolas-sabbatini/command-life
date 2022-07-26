@@ -1,5 +1,5 @@
 use crate::{
-    life::Life,
+    menu::Menu,
     render::{draw, new_frame, Frame},
 };
 use anyhow::Result;
@@ -17,7 +17,7 @@ use std::{
 
 pub trait State {
     fn input_handle(&mut self, key: KeyCode);
-    fn update(&mut self, dt: &Duration);
+    fn update(&mut self, ctx: &mut Ctx);
     fn draw(&self, frame: &mut Frame);
 }
 
@@ -57,7 +57,7 @@ pub fn main_loop() -> Result<()> {
     debug!("Render created");
 
     // Create start state
-    let mut state_machine = StateMachine::<Life>::new(&mut ctx);
+    let mut state_machine = StateMachine::<Menu>::new(&mut ctx);
 
     let mut frame_time = Instant::now();
     'main_loop: loop {
@@ -83,7 +83,7 @@ pub fn main_loop() -> Result<()> {
             }
         }
 
-        state_machine.0.update(&ctx.dt);
+        state_machine.0.update(&mut ctx);
         let mut frame = new_frame(&ctx);
         state_machine.0.draw(&mut frame);
 

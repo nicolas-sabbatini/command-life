@@ -12,6 +12,7 @@ use crate::engine::main_loop;
 mod engine;
 mod life;
 mod render;
+mod menu;
 
 fn main() -> Result<()> {
     simple_logging::log_to_file("command-life.log", LevelFilter::Debug)?;

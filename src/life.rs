@@ -1,5 +1,6 @@
 use crate::{
     engine::{Ctx, State, StateMachine},
+    menu::Menu,
     render::{draw_rec, draw_text, Cell, Frame},
 };
 use crossterm::{event::KeyCode, style::Color};
@@ -23,6 +24,7 @@ pub struct Life {
     cols: u32,
     step_time: Duration,
     status: Status,
+    seeded: bool,
 }
 
 impl Life {
@@ -46,16 +48,16 @@ impl State for Life {
         }
     }
 
-    fn update(&mut self, dt: &Duration) {
+    fn update(&mut self, ctx: &mut Ctx) {
         if self.status == Status::Pause {
             return;
         }
-        match self.step_time.saturating_sub(*dt) {
+        match self.step_time.saturating_sub(ctx.dt) {
             Duration::ZERO => {
                 self.step_time = Duration::from_secs_f32(0.5);
             }
             _ => {
-                self.step_time = self.step_time.saturating_sub(*dt);
+                self.step_time = self.step_time.saturating_sub(ctx.dt);
                 return;
             }
         }
@@ -147,8 +149,33 @@ impl StateMachine<Life> {
             rows: ctx.rows as u32,
             step_time: Duration::from_secs_f32(0.5),
             status: Status::Pause,
+            seeded: true,
         });
         new_life.0.fill_current(ctx);
         new_life
+    }
+}
+
+impl From<StateMachine<Menu>> for StateMachine<Life> {
+    fn from(menu: StateMachine<Menu>) -> Self {
+        Self(Life {
+            current_cells: vec![
+                vec![false; menu.0.selected_rows as usize];
+                menu.0.selected_cols as usize
+            ],
+            next_cells: vec![
+                vec![false; menu.0.selected_rows as usize];
+                menu.0.selected_cols as usize
+            ],
+            alive_rule: [false, false, true, true, false, false, false, false, false],
+            dead_rule: [true, true, false, false, true, true, true, true, true],
+            born_rule: [false, false, false, true, false, false, false, false, false],
+            alive_threshold: 0.50,
+            cols: menu.0.selected_cols as u32,
+            rows: menu.0.selected_rows as u32,
+            step_time: Duration::from_secs_f32(0.5),
+            status: Status::Pause,
+            seeded: false,
+        })
     }
 }
