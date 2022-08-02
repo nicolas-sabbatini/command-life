@@ -19,10 +19,8 @@ pub trait State {
     fn input_handle(&mut self, key: KeyCode);
     fn update(&mut self, ctx: &mut Ctx);
     fn draw(&self, frame: &mut Frame);
+    fn next(&self) -> Option<Box<dyn State>>;
 }
-
-#[derive(Debug)]
-pub struct StateMachine<S: State>(pub S);
 
 #[derive(Debug)]
 pub struct Ctx {
@@ -42,7 +40,6 @@ pub fn main_loop() -> Result<()> {
         rng: thread_rng(),
     };
     info!("Terminal detected: {:#?}", ctx);
-
     // Create render
     let mut prev_frame = new_frame(&ctx);
     let (render_sender, render_reciver) = unbounded::<(Frame, bool)>();
@@ -55,23 +52,23 @@ pub fn main_loop() -> Result<()> {
         }
     });
     debug!("Render created");
-
     // Create start state
-    let mut state_machine = StateMachine::<Menu>::new(&mut ctx);
-
+    let mut state_machine: Box<dyn State> = Box::new(Menu::new(&mut ctx));
+    // Start dt
     let mut frame_time = Instant::now();
     'main_loop: loop {
-        // debug!("Frame, dt: {:#?}", ctx.dt);
         // Update delta time
         ctx.dt = frame_time.elapsed();
         frame_time = Instant::now();
-
+        // debug!("Frame, dt: {:#?}", ctx.dt);
+        // Start of state logic
         let mut force = false;
+        // Check keys and resize
         while event::poll(Duration::from_secs(0))? {
             match event::read()? {
                 Event::Key(key) => match key.code {
                     KeyCode::Esc | KeyCode::Char('q') => break 'main_loop,
-                    k => state_machine.0.input_handle(k),
+                    k => state_machine.input_handle(k),
                 },
                 Event::Resize(x, y) => {
                     debug!("Resize Event: {} {}", x, y);
@@ -82,14 +79,19 @@ pub fn main_loop() -> Result<()> {
                 _ => (),
             }
         }
-
-        state_machine.0.update(&mut ctx);
+        // Update state
+        state_machine.update(&mut ctx);
+        // Draw
         let mut frame = new_frame(&ctx);
-        state_machine.0.draw(&mut frame);
-
+        state_machine.draw(&mut frame);
         if let Err(err) = render_sender.send((frame, force)) {
-            error!("Failed to sed frame to render {:#?}", err);
+            error!("Failed to send frame to render {:#?}", err);
         };
+        // Check state change
+        if let Some(new_state) = state_machine.next() {
+            state_machine = new_state;
+        }
+        // Return to CPU
         thread::sleep(Duration::from_millis(1));
     }
     // Kill channel

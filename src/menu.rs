@@ -1,5 +1,6 @@
 use crate::{
-    engine::{Ctx, State, StateMachine},
+    engine::{Ctx, State},
+    life::Life,
     render::{draw_rec, draw_text, Cell, Frame},
 };
 use crossterm::{event::KeyCode, style::Color};
@@ -12,7 +13,7 @@ enum CursorPosition {
 }
 
 impl CursorPosition {
-    fn up(&self) -> Self {
+    fn move_up(&self) -> Self {
         match self {
             CursorPosition::Cols => CursorPosition::Play,
             CursorPosition::Rows => CursorPosition::Cols,
@@ -20,13 +21,19 @@ impl CursorPosition {
         }
     }
 
-    fn down(&self) -> Self {
+    fn move_down(&self) -> Self {
         match self {
             CursorPosition::Cols => CursorPosition::Rows,
             CursorPosition::Rows => CursorPosition::Play,
             CursorPosition::Play => CursorPosition::Cols,
         }
     }
+}
+
+#[non_exhaustive]
+enum Transitions {
+    No,
+    Life,
 }
 
 pub struct Menu {
@@ -37,9 +44,23 @@ pub struct Menu {
     pub selected_cols: u16,
     pub selected_rows: u16,
     cursor_position: CursorPosition,
+    next_state: Transitions,
 }
 
 impl Menu {
+    pub fn new(ctx: &mut Ctx) -> Self {
+        Menu {
+            min_cols: 10,
+            min_rows: 10,
+            max_cols: 999,
+            max_rows: 999,
+            selected_cols: ctx.cols,
+            selected_rows: ctx.rows,
+            cursor_position: CursorPosition::Cols,
+            next_state: Transitions::No,
+        }
+    }
+
     fn decrease_value(&mut self) {
         match self.cursor_position {
             CursorPosition::Cols => {
@@ -76,10 +97,13 @@ impl Menu {
 impl State for Menu {
     fn input_handle(&mut self, key: KeyCode) {
         match key {
-            KeyCode::Up => self.cursor_position = self.cursor_position.up(),
-            KeyCode::Down => self.cursor_position = self.cursor_position.down(),
+            KeyCode::Up => self.cursor_position = self.cursor_position.move_up(),
+            KeyCode::Down => self.cursor_position = self.cursor_position.move_down(),
             KeyCode::Left => self.decrease_value(),
             KeyCode::Right => self.increase_value(),
+            KeyCode::Char(' ') if self.cursor_position == CursorPosition::Play => {
+                self.next_state = Transitions::Life
+            }
             _ => (),
         }
     }
@@ -128,18 +152,12 @@ impl State for Menu {
             frame,
         );
     }
-}
 
-impl StateMachine<Menu> {
-    pub fn new(ctx: &mut Ctx) -> Self {
-        Self(Menu {
-            min_cols: 10,
-            min_rows: 10,
-            max_cols: 999,
-            max_rows: 999,
-            selected_cols: ctx.cols,
-            selected_rows: ctx.cols,
-            cursor_position: CursorPosition::Cols,
-        })
+    fn next(&self) -> Option<Box<dyn State>> {
+        match self.next_state {
+            Transitions::No => None,
+            Transitions::Life => Some(Box::new(Life::from(self))),
+            _ => None,
+        }
     }
 }

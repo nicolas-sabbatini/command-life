@@ -1,5 +1,5 @@
 use crate::{
-    engine::{Ctx, State, StateMachine},
+    engine::{Ctx, State},
     menu::Menu,
     render::{draw_rec, draw_text, Cell, Frame},
 };
@@ -28,7 +28,25 @@ pub struct Life {
 }
 
 impl Life {
-    fn fill_current(&mut self, ctx: &mut Ctx) {
+    pub fn new(ctx: &mut Ctx) -> Self {
+        let mut new_life = Self {
+            current_cells: vec![vec![false; ctx.rows as usize]; ctx.cols as usize],
+            next_cells: vec![vec![false; ctx.rows as usize]; ctx.cols as usize],
+            alive_rule: [false, false, true, true, false, false, false, false, false],
+            dead_rule: [true, true, false, false, true, true, true, true, true],
+            born_rule: [false, false, false, true, false, false, false, false, false],
+            alive_threshold: 0.50,
+            cols: ctx.cols as u32,
+            rows: ctx.rows as u32,
+            step_time: Duration::from_secs_f32(0.5),
+            status: Status::Pause,
+            seeded: true,
+        };
+        new_life.seed(ctx);
+        new_life
+    }
+
+    fn seed(&mut self, ctx: &mut Ctx) {
         (0..self.current_cells.len()).for_each(|x| {
             (0..self.current_cells[0].len()).for_each(|y| {
                 if ctx.rng.gen::<f32>() < self.alive_threshold {
@@ -36,6 +54,7 @@ impl Life {
                 }
             });
         });
+        self.seeded = true;
     }
 }
 
@@ -49,6 +68,9 @@ impl State for Life {
     }
 
     fn update(&mut self, ctx: &mut Ctx) {
+        if !self.seeded {
+            self.seed(ctx);
+        }
         if self.status == Status::Pause {
             return;
         }
@@ -134,48 +156,29 @@ impl State for Life {
             );
         }
     }
-}
 
-impl StateMachine<Life> {
-    pub fn new(ctx: &mut Ctx) -> Self {
-        let mut new_life = Self(Life {
-            current_cells: vec![vec![false; ctx.rows as usize]; ctx.cols as usize],
-            next_cells: vec![vec![false; ctx.rows as usize]; ctx.cols as usize],
-            alive_rule: [false, false, true, true, false, false, false, false, false],
-            dead_rule: [true, true, false, false, true, true, true, true, true],
-            born_rule: [false, false, false, true, false, false, false, false, false],
-            alive_threshold: 0.50,
-            cols: ctx.cols as u32,
-            rows: ctx.rows as u32,
-            step_time: Duration::from_secs_f32(0.5),
-            status: Status::Pause,
-            seeded: true,
-        });
-        new_life.0.fill_current(ctx);
-        new_life
+    fn next(&self) -> Option<Box<dyn State>> {
+        None
     }
 }
 
-impl From<StateMachine<Menu>> for StateMachine<Life> {
-    fn from(menu: StateMachine<Menu>) -> Self {
-        Self(Life {
+impl From<&Menu> for Life {
+    fn from(menu: &Menu) -> Self {
+        Self {
             current_cells: vec![
-                vec![false; menu.0.selected_rows as usize];
-                menu.0.selected_cols as usize
+                vec![false; menu.selected_rows as usize];
+                menu.selected_cols as usize
             ],
-            next_cells: vec![
-                vec![false; menu.0.selected_rows as usize];
-                menu.0.selected_cols as usize
-            ],
+            next_cells: vec![vec![false; menu.selected_rows as usize]; menu.selected_cols as usize],
             alive_rule: [false, false, true, true, false, false, false, false, false],
             dead_rule: [true, true, false, false, true, true, true, true, true],
             born_rule: [false, false, false, true, false, false, false, false, false],
             alive_threshold: 0.50,
-            cols: menu.0.selected_cols as u32,
-            rows: menu.0.selected_rows as u32,
+            cols: menu.selected_cols as u32,
+            rows: menu.selected_rows as u32,
             step_time: Duration::from_secs_f32(0.5),
             status: Status::Pause,
             seeded: false,
-        })
+        }
     }
 }
