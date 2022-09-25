@@ -61,8 +61,12 @@ impl Life {
 impl State for Life {
     fn input_handle(&mut self, key: KeyCode) {
         match key {
-            KeyCode::Char(' ') if self.status == Status::Runing => self.status = Status::Pause,
-            KeyCode::Char(' ') if self.status == Status::Pause => self.status = Status::Runing,
+            KeyCode::Char(' ') | KeyCode::Enter if self.status == Status::Runing => {
+                self.status = Status::Pause
+            }
+            KeyCode::Char(' ') | KeyCode::Enter if self.status == Status::Pause => {
+                self.status = Status::Runing
+            }
             _ => {}
         }
     }

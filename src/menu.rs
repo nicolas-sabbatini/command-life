@@ -101,7 +101,7 @@ impl State for Menu {
             KeyCode::Down => self.cursor_position = self.cursor_position.move_down(),
             KeyCode::Left => self.decrease_value(),
             KeyCode::Right => self.increase_value(),
-            KeyCode::Char(' ') if self.cursor_position == CursorPosition::Play => {
+            KeyCode::Char(' ') | KeyCode::Enter if self.cursor_position == CursorPosition::Play => {
                 self.next_state = Transitions::Life
             }
             _ => (),
